@@ -133,7 +133,6 @@ def interface(embeddings, metadata, e_name, d_name):
 
 				# make query here
 				top_K_indicies = search_database(query_vector, embeddings, metadata, K)
-				print(top_K_indicies)
 
 				return True, embeddings
 			
