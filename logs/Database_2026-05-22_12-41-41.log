@@ -1,0 +1,4 @@
+2026-05-22 12:41:41,852 - INFO - root - main.py:29 - Program Started
+2026-05-22 12:42:25,996 - INFO - root - utils.py:163 - Website successfully added: https://en.wikipedia.org/wiki/Cuban_Missile_Crisis
+2026-05-22 12:42:35,297 - INFO - root - utils.py:141 - Query executed: cause of war
+2026-05-22 12:42:38,762 - INFO - root - main.py:75 - Program Terminated
