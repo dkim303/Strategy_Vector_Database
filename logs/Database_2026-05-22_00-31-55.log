@@ -1,0 +1,6 @@
+2026-05-22 00:31:55,557 - INFO - root - main.py:29 - Program Started
+2026-05-22 00:32:17,097 - INFO - root - utils.py:199 - Invalid command recieved from user
+2026-05-22 00:32:26,734 - INFO - root - utils.py:186 - Invalid URL entered
+2026-05-22 00:32:57,630 - INFO - root - utils.py:163 - Website successfully added: https://en.wikipedia.org/wiki/Russian_Revolution
+2026-05-22 00:33:39,419 - INFO - root - utils.py:141 - Query executed: main role of religion in politics
+2026-05-22 00:33:41,191 - INFO - root - main.py:72 - Program Terminated

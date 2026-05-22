@@ -8,7 +8,10 @@ import requests
 import json
 import sys
 from pathlib import Path
+import logging
+import os
 
+logger = logging.getLogger(__name__)
 
 def menu():
 	print(f"Enter 1 to make query.")
@@ -34,7 +37,7 @@ def add_vectorized_website(url, embeddings, dictionary):
 		if not text:
 			continue
 
-		vector = model.encode(text, convert_to_numpy=True, normalize_embeddings=True)
+		vector = model.encode(text, convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False)
 		vectors.append(vector)
 
 		dictionary[len(dictionary)] = { "url": url, "type":"website", "text": text}
@@ -69,7 +72,7 @@ def add_vectorized_PDF(url, embeddings, dictionary):
 		chunks = chunk_text(text)
 
 		for chunk_num, chunk in enumerate(chunks):
-			vector = model.encode(chunk, convert_to_numpy=True, normalize_embeddings=True)
+			vector = model.encode(chunk, convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False)
 			vectors.append(vector)
 			dictionary[len(dictionary)] = {"url": url, "type":"pdf", "page number":page_num+1,"text": chunk}
 
@@ -123,7 +126,7 @@ def interface(embeddings, metadata, e_name, d_name):
 			# Making A Query
 			case "1":
 				query = input("Enter query: ")
-				query_vector = model.encode(query, convert_to_numpy=True, normalize_embeddings=True)
+				query_vector = model.encode(query, convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False)
 
 				# determine K value for how many results to return
 				K = int(input("Enter K-value for top-K search: "))
@@ -135,7 +138,7 @@ def interface(embeddings, metadata, e_name, d_name):
 				top_K_indicies = search_database(query_vector, embeddings, metadata, K)
 
 				print(top_K_indicies)
-
+				logging.info(f"Query executed: {query}")
 				return True, embeddings
 			
 			case "2":
@@ -157,6 +160,7 @@ def interface(embeddings, metadata, e_name, d_name):
 						update_files(e_name, d_name, embeddings, metadata)
 
 						print("Success: Website Added.")
+						logging.info(f"Website successfully added: {url}")
 						return True, embeddings
 						
 					# PDF URL Entering
@@ -173,11 +177,13 @@ def interface(embeddings, metadata, e_name, d_name):
 						update_files(e_name, d_name, embeddings, metadata)
 
 						print("Success: PDF Added.")
+						logging.info(f"PDF successfully added: {url}")
 						return True, embeddings
 
 					# Invalid URL Type
 					else:
 						print("Invalid URL type entered, entry skipped.")
+						logging.info("Invalid URL type entered")
 						return True, embeddings
 
 			# Exit program
@@ -190,8 +196,10 @@ def interface(embeddings, metadata, e_name, d_name):
 				raise ValueError("Error: invalid command given.")
 
 	except ValueError as e:
+		logging.info("Invalid command recieved from user")
 		print(e)
 		return True, embeddings
 	except requests.exceptions.RequestException as e:
+		logging.info("HTTPS request failed")
 		print(e)
 		return True, embeddings
