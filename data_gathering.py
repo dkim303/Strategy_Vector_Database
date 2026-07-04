@@ -35,7 +35,8 @@ def main(config_file: str):
     run_status = "Failure"
     is_ended = False
     start_time = str(datetime.now())
-    num_input = 0
+    num_URLs = 0
+    num_chunks = 0
     URLs = []
     error_message = None
     job_type = "ingestion"
@@ -64,28 +65,33 @@ def main(config_file: str):
                 selected_advisors = input("Enter advisor numbers, comma-separated, or 'all': ").strip()
                 selected_advisors_list = selected_advisors.split(",")
 
-                # Remove invalid selected advisors
-                invalid_advisors = [x for x in selected_advisors if x not in existing_advisors]
+                if "all" in [selection.lower() for selection in selected_advisors_list]:
+                    selected_advisors = existing_advisors.copy()
+                else:
+                    # Remove invalid selected advisors
+                    invalid_advisors = [x for x in selected_advisors if x not in existing_advisors]
 
-                if invalid_advisors:
-                    print(f"Dropping invalid Advisors: {invalid_advisors}")
-                    for invalid in invalid_advisors:
-                        selected_advisors.remove(invalid)
+                    if invalid_advisors:
+                        print(f"Dropping invalid Advisors: {invalid_advisors}")
+                        for invalid in invalid_advisors:
+                            selected_advisors.remove(invalid)
 
-                if not selected_advisors:
-                    print(f"Selected advisors are invalid, loop reseting.")
-                    raise Exception("No valid advisors selected")
+                    if not selected_advisors:
+                        print(f"Selected advisors are invalid, loop reseting.")
+                        raise Exception("No valid advisors selected")
 
                 print(f"Starting Ingestion for {url}")
                 try:
                     # Do Insertion
-                    insert_url_to_database(conn, cur, url)
+                    CHUNK_SIZE = 250
+                    OVERLAP_SIZE = 40
+                    num_chunks += insert_url_to_database(cur, model, selected_advisors_list, url, CHUNK_SIZE, OVERLAP_SIZE)
                     
                 except Exception as e:
                     logging.error(f"Attempt to insert {url} failed: {e}")
                     raise
 
-                num_input += 1
+                num_URLs += 1
                 URLs.append(url)       
                 conn.commit()
 
@@ -109,7 +115,7 @@ def main(config_file: str):
                             cur, 
                             job_type,
                             run_status,
-                            num_input,
+                            num_URLs,
                             URLs,
                             start_time,
                             end_time,

@@ -14,6 +14,7 @@ import logging
 import time
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+import hashlib
 from schema_utils import check_table_exists
 
 def get_config(config_file_path: str) -> tuple[dict, dict, dict, dict]:
@@ -136,77 +137,201 @@ def ETL_History(conn: psycopg.Connection, cur: psycopg.Cursor, job_type: str, ru
     conn.commit()
 
 
-def insert_HTML(cur: psycopg.Cursor, resp: requests.models.Response, model: SentenceTransformer, chunk_size: int, overlap_size: int) -> None:
+def get_content_hash(text: str) -> str:
+    normalized_text = text.strip()
+    return hashlib.sha256(normalized_text.encode("utf-8")).hexdigest()
+
+
+def insert_HTML(cur: psycopg.Cursor, resp: requests.models.Response, model: SentenceTransformer, selected_advisors_list: list[str], chunk_size: int, overlap_size: int, url: str) -> int:
     content_type = "HTML"
+    
+    content_hash = get_content_hash(text)
+    model_name = model.model_card_data.base_model
+    chunks = []
+
     soup = BeautifulSoup(resp.text, "html.parser")
 
 
-def insert_PDF(cur: psycopg.Cursor, resp: requests.models.Response, model: SentenceTransformer, chunk_size: int, overlap_size: int) -> None:
+def insert_PDF(cur: psycopg.Cursor, resp: requests.models.Response, model: SentenceTransformer, selected_advisors_list: list[str], chunk_size: int, overlap_size: int, url: str) -> int:
     content_type = "PDF"
+    model_name = model.model_card_data.base_model
+    chunks = []
 
     pdf_bytes = resp.content
     pdf_file = io.BytesIO(pdf_bytes)
-
     reader = PdfReader(pdf_file)
-
     text = ""
     for page in reader.pages:
         text += page.extract_text() or ""
 
-
-def insert_Plain_Text(cur: psycopg.Cursor, resp: requests.models.Response, model: SentenceTransformer, chunk_size: int, overlap_size: int) -> None:
-    content_type = "Plain_Text"
-
-    text = resp.text
-    words = text.split()
-    chunks = []
+    content_hash = get_content_hash(text)
+    words  = text.split()
     
+    # Part 1: Update Documents table to have new URL
+    query = """
+            INSERT INTO project.documents (
+                source_type,
+                url,
+                content_hash
+            )
+            VALUES (%s, %s, %s)
+            RETURNING document_id;
+            """
+    cur.execute(query,(content_type, url, content_hash))
+    document_id = cur.fetchone()[0]
+
     step = chunk_size - overlap_size
 
     for i in range(0, len(words), step):
         chunk = words[i:i + chunk_size]
         chunks.append(" ".join(chunk))
 
-
-    # Insert each chunk into Postgre
+    # Part 2: Insert chunks from URL into Chunks table
+    chunk_index = 0
     for chunk in chunks:
-
         # Vectorize text
         embedding = model.encode(chunk).tolist()
+        word_count = len(chunk.split())
 
         query = """
             INSERT INTO project.chunks (
                 document_id,
                 chunk_index,
                 chunk_text,
-                token_count,
+                word_count,
                 embedding,
-                embedding model
+                embedding_model
             )
             VALUES (%s, %s, %s, %s, %s, %s);
         """
         cur.execute(
             query,
             (
-                
-            ),
+                document_id,
+                chunk_index,
+                chunk,
+                word_count,
+                embedding,
+                model_name
+            )
         )
+
+        chunk_index += 1
+
+    # Part 3: Update Advisor Documents table to show access
+    for advisor in selected_advisors_list:
+        query = """
+                INSERT INTO project.advisor_documents (
+                    advisor_id,
+                    document_id
+                )
+                VALUES (%s, %s);
+                """
+        cur.execute(
+            query,
+            (
+                int(advisor),
+                document_id
+            )
+        )
+    
+    return len(chunks)
+
+
+
+def insert_Plain_Text(cur: psycopg.Cursor, resp: requests.models.Response, model: SentenceTransformer, selected_advisors_list: list[str], chunk_size: int, overlap_size: int, url: str) -> int:
+    content_type = "Plain_Text"
+    text = resp.text
+    words = text.split()
+    chunks = []
+    content_hash = get_content_hash(text)
+    model_name = model.model_card_data.base_model
+    
+    # Part 1: Update Documents table to have new URL
+    query = """
+            INSERT INTO project.documents (
+                source_type,
+                url,
+                content_hash
+            )
+            VALUES (%s, %s, %s)
+            RETURNING document_id;
+            """
+    cur.execute(query,(content_type, url, content_hash))
+    document_id = cur.fetchone()[0]
+
+    step = chunk_size - overlap_size
+
+    for i in range(0, len(words), step):
+        chunk = words[i:i + chunk_size]
+        chunks.append(" ".join(chunk))
+
+    # Part 2: Insert chunks from URL into Chunks table
+    chunk_index = 0
+    for chunk in chunks:
+        # Vectorize text
+        embedding = model.encode(chunk).tolist()
+        word_count = len(chunk.split())
+
+        query = """
+            INSERT INTO project.chunks (
+                document_id,
+                chunk_index,
+                chunk_text,
+                word_count,
+                embedding,
+                embedding_model
+            )
+            VALUES (%s, %s, %s, %s, %s, %s);
+        """
+        cur.execute(
+            query,
+            (
+                document_id,
+                chunk_index,
+                chunk,
+                word_count,
+                embedding,
+                model_name
+            )
+        )
+
+        chunk_index += 1
+
+    # Part 3: Update Advisor Documents table to show access
+    for advisor in selected_advisors_list:
+        query = """
+                INSERT INTO project.advisor_documents (
+                    advisor_id,
+                    document_id
+                )
+                VALUES (%s, %s);
+                """
+        cur.execute(
+            query,
+            (
+                int(advisor),
+                document_id
+            )
+        )
+    
+    return len(chunks)
         
 
 
-def insert_url_to_database(cur: psycopg.Cursor, model: SentenceTransformer, url: str, chunk_size: int = 250, overlap_size: int = 40) -> None:
+def insert_url_to_database(cur: psycopg.Cursor, model: SentenceTransformer, selected_advisors_list: list[str], url: str, chunk_size: int = 250, overlap_size: int = 40) -> int:
     try:
         resp = requests.get(url, timeout=10)
         content_type = resp.headers.get("Content-Type", "").lower()
 
         if "text/html" in content_type:
-            insert_HTML(cur, resp, model, chunk_size, overlap_size)
+            return insert_HTML(cur, resp, model, selected_advisors_list, chunk_size, overlap_size, url)
 
         elif "application/pdf" in content_type:
-            insert_PDF(cur, resp, model, chunk_size, overlap_size)
+            return insert_PDF(cur, resp, model, selected_advisors_list, chunk_size, overlap_size, url)
 
         elif "text/plain" in content_type:
-            insert_Plain_Text(cur, resp, model, chunk_size, overlap_size)
+            return insert_Plain_Text(cur, resp, model, selected_advisors_list, chunk_size, overlap_size, url)
 
         else:
             raise Exception("URL is not a supported type (HTML, PDF, Plain Text)")
