@@ -80,6 +80,7 @@ def main(config_file: str):
                 try:
                     # Do Insertion
                     insert_url_to_database(conn, cur, url)
+                    
                 except Exception as e:
                     logging.error(f"Attempt to insert {url} failed: {e}")
                     raise
