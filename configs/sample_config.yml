@@ -17,3 +17,4 @@ logging:
 
 sentence_transformer:
   model:
+  # default to "sentence-transformers/all-MiniLM-L6-v2"
