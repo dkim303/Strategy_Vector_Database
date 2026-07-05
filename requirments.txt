@@ -1,7 +1,7 @@
-sqlalchemy
-pandas
-numpy
-psycopg
-bs4
-sentence_transformers
-yaml
+sqlalchemy==1.4.54
+pandas==2.3.3
+numpy==2.3.5
+psycopg==3.3.4
+beautifulsoup4==4.12.3
+sentence_transformers==5.5.0
+pyyaml==6.0.2

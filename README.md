@@ -10,9 +10,10 @@ This project is ...
 - Use locally run LLM agent to synthesize information and complete specified tasks
 
 ### Installation
--
--
--
+- python -m venv .venv
+- source .venv/bin/activate
+- pip install -r requirements.txt
+- deactivate
 
 ## Database Overview
 ```text  
