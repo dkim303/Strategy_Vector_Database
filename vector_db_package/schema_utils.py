@@ -49,30 +49,33 @@ def get_missing_columns(df: pd.DataFrame, table_coluns: list[str]) -> list[str]:
     return list(missing_columns)
 
 
-def get_advisors(cur: psycopg.Cursor) -> list[str]:
-    query = """
-        SELECT name
-        FROM Project.advisors
+def get_advisors(
+    cur: psycopg.Cursor,
+    schema: str,
+    advisor_table: str
+) -> list[tuple[str, str]]:
+    query = sql.SQL("""
+        SELECT advisor_id, name
+        FROM {}.{}
         ORDER BY name;
-    """
+    """).format(
+        sql.Identifier(schema),
+        sql.Identifier(advisor_table)
+    )
 
     cur.execute(query)
     rows = cur.fetchall()
 
-    return [row[0] for row in rows]
+    return [(row[0], row[1]) for row in rows]
 
 
-def advisor_exists(cur: psycopg.Cursor, names_list: list[str], name: str) -> bool:
-    if name is None or name.strip() == "":
-        raise ValueError("Advisor Name List is Empty")
-
-    if name in names_list:
-        return True
-    else:
-        return False
-
-
-def create_new_advisor(cur: psycopg.Cursor, name: str, description: str = None, config: str = None) -> None:
+def create_new_advisor(cur: psycopg.Cursor, 
+                       conn: psycopg.Connection,
+                       schema: str,
+                       table: str,
+                       name: str, 
+                       description: str = None, 
+                       config: str = None) -> int:
     try:
         if name is None or name.strip() == "":
             raise ValueError("Empty Name")
@@ -80,15 +83,22 @@ def create_new_advisor(cur: psycopg.Cursor, name: str, description: str = None, 
         if isinstance(config, dict):
             config = json.dumps(config)
         
-        query = """
-            INSERT INTO project.advisors (name, description, config)
+        query = sql.SQL("""
+            INSERT INTO {}.{} (name, description, config)
             VALUES (%s, %s, %s)
             RETURNING advisor_id;
-        """
+        """).format(
+            sql.Identifier(schema),
+            sql.Identifier(table)
+        )
+
         cur.execute(query, (name, description, config))
-        cur.commit()
+        advisor_id = cur.fetchone()[0]
+        conn.commit()
         logging.info(f"Created new advisor: {name}")
+        return advisor_id
         
     except Exception as e:
         logging.error(f"Failed to create new advisor: {e}")
+        conn.rollback()
         raise

@@ -25,7 +25,6 @@ from vector_db_package.database_utils import (
 
 from vector_db_package.schema_utils import (
     get_advisors,
-    advisor_exists,
     create_new_advisor,
     check_table_exists
 )
@@ -34,7 +33,7 @@ def main(config_file: str):
 
     run_status = "Failure"
     is_ended = False
-    start_time = str(datetime.now())
+    start_time = str(datetime.datetime.now())
     num_URLs = 0
     num_chunks = 0
     URLs = []
@@ -43,6 +42,14 @@ def main(config_file: str):
 
     try:
         postgres_info, table_info, logging_info, sentence_transformer = get_config(config_file)
+
+        postgres_schema = postgres_info.get("schema")
+        advisors_table = table_info.get("advisors")
+        documents_table = table_info.get("documents")
+        chunks_table = table_info.get("chunks")
+        advisors_documents_table = table_info.get("advisor_documents")
+        etl_history_table = table_info.get("etl_history")
+
         conn, cur = get_connection(postgres_info)    
         model = SentenceTransformer(sentence_transformer.get("model"))
         log_file = setup_logging(logging_info)
@@ -57,26 +64,34 @@ def main(config_file: str):
                 break
 
             try:
-                print("Avaliable Advisors: ")
-                existing_advisors = get_advisors(cur)
-                for idx, advisor in enumerate(existing_advisors, start=1):
-                    print(f"[{idx}]: {advisor}")
+                print("Available Advisors: ")
+                existing_advisors = get_advisors(cur, postgres_schema, advisors_table)
+                for idx, (advisor_id, advisor_name) in enumerate(existing_advisors, start=1):
+                    print(f"[{idx}]: {advisor_name}")
 
                 selected_advisors = input("Enter advisor numbers, comma-separated, or 'all': ").strip()
-                selected_advisors_list = selected_advisors.split(",")
 
-                if "all" in [selection.lower() for selection in selected_advisors_list]:
-                    selected_advisors = existing_advisors.copy()
+                if selected_advisors.lower() == "all":
+                    selected_advisors_list = [advisor_id for advisor_id, _ in existing_advisors]
                 else:
+                    selected_advisors_list = []
                     # Remove invalid selected advisors
-                    invalid_advisors = [x for x in selected_advisors if x not in existing_advisors]
+                    for item in selected_advisors.split(","):
+                        item = item.strip()
 
-                    if invalid_advisors:
-                        print(f"Dropping invalid Advisors: {invalid_advisors}")
-                        for invalid in invalid_advisors:
-                            selected_advisors.remove(invalid)
+                        if not item.isdigit():
+                            print(f"Dropping invalid advisor selection: {item}")
+                            continue
 
-                    if not selected_advisors:
+                        idx = int(item)
+
+                        if 1 <= idx <= len(existing_advisors):
+                            advisor_id = existing_advisors[idx - 1][0]
+                            selected_advisors_list.append(advisor_id)
+                        else:
+                            print(f"Dropping out-of-range advisor selection: {item}")
+
+                    if not selected_advisors_list:
                         print(f"Selected advisors are invalid, loop reseting.")
                         raise Exception("No valid advisors selected")
 
@@ -85,7 +100,14 @@ def main(config_file: str):
                     # Do Insertion
                     CHUNK_SIZE = 250
                     OVERLAP_SIZE = 40
-                    num_chunks += insert_url_to_database(cur, model, selected_advisors_list, url, CHUNK_SIZE, OVERLAP_SIZE)
+                    num_chunks += insert_url_to_database(cur, 
+                                                         postgres_schema, 
+                                                         table_info, 
+                                                         model, 
+                                                         selected_advisors_list, 
+                                                         url, 
+                                                         CHUNK_SIZE, 
+                                                         OVERLAP_SIZE)
                     
                 except Exception as e:
                     logging.error(f"Attempt to insert {url} failed: {e}")
@@ -107,12 +129,14 @@ def main(config_file: str):
         run_status = "Failure"
 
     finally:
-        end_time = str(datetime.now())
+        end_time = str(datetime.datetime.now())
 
         if conn is not None and cur is not None:
             try:
                 ETL_History(conn, 
                             cur, 
+                            postgres_schema,
+                            etl_history_table,
                             job_type,
                             run_status,
                             num_URLs,
@@ -121,12 +145,13 @@ def main(config_file: str):
                             end_time,
                             error_message,
                             log_file)
+                
             except Exception as e:
                 logging.error(f"Failed to write to ETL History: {e}")
 
             logging.info("Terminating Program")
-            conn.close()
             cur.close()
+            conn.close()
 
 
 

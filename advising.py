@@ -30,6 +30,14 @@ from vector_db_package.schema_utils import (
 def main(config_file: str):
     try:
         postgres_info, table_info, logging_info, sentence_transformer = get_config(config_file)
+
+        postgres_schema = postgres_info.get("schema")
+        advisors_table = table_info.get("advisors")
+        documents_table = table_info.get("documents")
+        chunks_table = table_info.get("chunks")
+        advisors_documents_table = table_info.get("advisor_documents")
+        etl_history_table = table_info.get("etl_history")
+
         conn, cur = get_connection(postgres_info)    
         model = SentenceTransformer(sentence_transformer.get("model"))
         log_file = setup_logging(logging_info)
