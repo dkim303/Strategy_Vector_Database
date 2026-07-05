@@ -1,0 +1,7 @@
+sqlalchemy
+pandas
+numpy
+psycopg
+bs4
+sentence_transformers
+yaml

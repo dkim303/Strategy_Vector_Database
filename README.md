@@ -1,19 +1,53 @@
-SQL Server Heirarchy:
-	Database:
-		Schemas:
-			- Project
-				Tables:
-					- advisor_documents: which advisor gets what information
-						cols: advisor_id, document_id, weight, relevance_note 
+# RAG Advisor Project:
 
+### Description:
+This project is ...
 
-					- advisors: basic info on advisors
-						cols: advisor_id, name, description, config
+### Features:
+- Data ingestion using URLs for HTML, PDF, and Plain Text
+- RAG system capabilities and vector similarity search for stored chunks
+- Selection of advisors that will take in query and use RAG to make informed response
+- Use locally run LLM agent to synthesize information and complete specified tasks
 
+### Installation
+-
+-
+-
 
-					- chunks: chunks of text from documents
-						cols: chunk_id, document_id, chunk_index, chunk_text, token_count, embedding, embedding model
-						
-
-					- documents: catalogue of the documents
-						cols: document_id, url, source_type, content_hash
+## Database Overview
+```text  
+└── Project schema  
+├── advisor_documents  
+│ ├── Purpose: Maps advisors to relevant documents  
+│ └── Columns:  
+│ ├── advisor_id  
+│ ├── document_id  
+│ ├── weight  
+│ └── relevance_note  
+│  
+├── advisors  
+│ ├── Purpose: Stores basic advisor information  
+│ └── Columns:  
+│ ├── advisor_id  
+│ ├── name  
+│ ├── description  
+│ └── config  
+│  
+├── chunks  
+│ ├── Purpose: Stores text chunks extracted from documents  
+│ └── Columns:  
+│ ├── chunk_id  
+│ ├── document_id  
+│ ├── chunk_index  
+│ ├── chunk_text  
+│ ├── token_count  
+│ ├── embedding  
+│ └── embedding_model  
+│  
+├── documents  
+│ ├── Purpose: Catalogues source documents
+│ └── Columns:  
+│ ├── document_id  
+│ ├── url  
+│ ├── source_type  
+│ └── content_hash  
