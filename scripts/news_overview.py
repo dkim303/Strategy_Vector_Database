@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 import hashlib
+import argparse
 import ollama
 
 from vector_db_package.database_utils import (
@@ -36,13 +37,14 @@ from vector_db_package.advising_utils import (
 def main(config_file_name: str):
     try:
         print("Start of News Overview Program:")
-        postgres_info, table_info, logging_info, sentence_transformer, ollam_info = get_config(config_file_name)
+        postgres_info, table_info, logging_info, sentence_transformer, ollama_info = get_config(config_file_name)
 
         postgres_schema = postgres_info.get("schema")
         advisors_table = table_info.get("advisors")
         documents_table = table_info.get("documents")
         chunks_table = table_info.get("chunks")
         advisors_documents_table = table_info.get("advisor_documents")
+        ollama_model = ollama_info.get("model")
 
         conn, cur = get_connection(postgres_info)    
         model = SentenceTransformer(sentence_transformer.get("model"))
@@ -55,4 +57,8 @@ def main(config_file_name: str):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config_file", required=True, help="Configuration File Path")
+    args = parser.parse_args()
+
+    main(args.config_file)

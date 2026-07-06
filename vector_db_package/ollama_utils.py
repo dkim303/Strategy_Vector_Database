@@ -17,9 +17,8 @@ from sentence_transformers import SentenceTransformer
 import hashlib
 import ollama
 
-def check_ollama_connection() -> bool:
+def check_ollama_connection() -> None:
     try:
         ollama.list()
-        return True
     except Exception:
-        return False
+        raise ConnectionError("Ollama Connection Failed")
