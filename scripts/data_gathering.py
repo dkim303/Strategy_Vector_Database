@@ -1,7 +1,6 @@
 from bs4 import BeautifulSoup
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from vector_db_package import utils
 import requests
 import json
 import sys

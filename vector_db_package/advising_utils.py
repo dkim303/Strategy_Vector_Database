@@ -28,11 +28,9 @@ from vector_db_package.schema_utils import (
     check_table_exists
 )
 
-from vector_db_package.advising_utils import (
-    run_advisor_query
-)
+def cosine_similarity_matrix(query_vec: list[float], 
+                             embedding_matrix: list[list[float]]) -> np.ndarray:
 
-def cosine_similarity_matrix(query_vec, embedding_matrix):
     query_vec = np.array(query_vec, dtype=np.float32)
     embedding_matrix = np.array(embedding_matrix, dtype=np.float32)
 
@@ -47,7 +45,7 @@ def run_advisor_query(cur: psycopg.Cursor,
                       model: SentenceTransformer,
                       advisor_id: int,
                       query_text: str,
-                      top_k: int = 30) -> pd.DataFrame:
+                      K: int = 30) -> pd.DataFrame:
 
     model_name = model.model_card_data.base_model
         
@@ -77,3 +75,23 @@ def run_advisor_query(cur: psycopg.Cursor,
 
     embeddings = [row["embedding"] for row in rows]
     scores = cosine_similarity_matrix(query_embedding, embeddings)
+
+    top_K_indices = np.argsort(scores)[-K:][::-1]
+
+    top_K_results = []
+    for idx in top_K_indices:
+        row = rows[idx]
+        score = scores[idx]
+
+        top_K_results.append({
+            "score": float(score),
+            "chunk_id": row["chunk_id"],
+            "document_id": row["document_id"],
+            "chunk_index": row["chunk_index"],
+            "chunk_text": row["chunk_text"],
+            "embedding_model": row["embedding_model"],
+            "url": row["url"],
+        })
+
+    top_K_df = pd.DataFrame(top_K_results)
+    return top_K_df
