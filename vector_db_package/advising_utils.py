@@ -89,9 +89,27 @@ def run_advisor_query(cur: psycopg.Cursor,
             "document_id": row["document_id"],
             "chunk_index": row["chunk_index"],
             "chunk_text": row["chunk_text"],
-            "embedding_model": row["embedding_model"],
             "url": row["url"],
         })
 
     top_K_df = pd.DataFrame(top_K_results)
     return top_K_df
+
+
+def get_advisor_desc(cur: psycopg.Cursor, schema: str, table: str, advisor_id: int) -> str:
+    query = sql.SQL("""
+                    SELECT description
+                    FROM {}.{}
+                    WHERE advisor_id = %s;
+                    """).format(
+                sql.Identifier(schema),
+                sql.Identifier(table)
+                )
+
+    cur.execute(query, (advisor_id,))
+    row = cur.fetchone()
+
+    if row is None:
+        raise ValueError(f"No advisor found with advisor_id = {advisor_id}")
+
+    return row["description"]
