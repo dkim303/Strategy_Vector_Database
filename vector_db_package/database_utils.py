@@ -15,7 +15,6 @@ import time
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 import hashlib
-from schema_utils import check_table_exists
 
 def get_config(config_file_path: str) -> tuple[dict, dict, dict, dict]:
     config_path = Path(config_file_path).expanduser().resolve()
