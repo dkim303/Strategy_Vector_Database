@@ -15,6 +15,15 @@ This project is ...
 - pip install -r requirements.txt
 - deactivate
 
+### Tech Stack
+- Programming language: Python, SQL
+- Database: PostgreSQL
+- Data Tools: pandas, NumPy, YAML, sentence-transformers, BeautifulSoup, pypdf
+- APIs/Services: psycopg, Ollama
+- Testing: pytest
+- Version Control: Git, GitHub
+
+
 ## Database Overview
 ```text  
 └── Project schema  
