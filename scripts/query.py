@@ -72,15 +72,21 @@ def main(config_file_name: str):
                             advisor_id,
                             query_text,
                             K)
-                            
-        """
-            Transform DF into usable strings
-        """
-
+        
+        context_text = "\n\n".join(
+                f"""[Context {i+1}]
+            Score: {row["score"]:.4f}
+            Document ID: {row["document_id"]}
+            Chunk ID: {row["chunk_id"]}
+            Text:
+            {row["chunk_text"]}"""
+                for i, row in top_K_df.iterrows()
+        )
 
         chat_message = [
                 {"role": "system", "content": f"{advisor_desc}"},
-                {"role": "user", "content": f"{query_text}"}
+                {"role": "user", "content": f"{query_text}"},
+                {"role": "user", "content": f"{context_text}"}
             ]
         
         check_ollama_connection()
