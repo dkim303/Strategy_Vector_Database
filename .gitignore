@@ -16,6 +16,7 @@ configs/*.yml
 # Logs
 *.log
 logs/
+!logs/.gitkeep
 
 # OS/editor files
 .DS_Store

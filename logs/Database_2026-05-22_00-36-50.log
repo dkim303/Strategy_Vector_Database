@@ -1,8 +1,0 @@
-2026-05-22 00:36:50,161 - INFO - root - main.py:29 - Program Started
-2026-05-22 00:37:04,647 - INFO - root - utils.py:186 - Invalid URL type entered
-2026-05-22 00:37:15,274 - INFO - root - utils.py:186 - Invalid URL type entered
-2026-05-22 00:37:21,011 - INFO - root - utils.py:199 - Invalid command recieved from user
-2026-05-22 00:37:38,981 - INFO - root - utils.py:199 - Invalid command recieved from user
-2026-05-22 00:37:50,300 - INFO - root - utils.py:163 - Website successfully added: https://en.wikipedia.org/wiki/Treaty_of_Trianon
-2026-05-22 00:38:04,471 - INFO - root - utils.py:141 - Query executed: role of nationalism in ww1
-2026-05-22 00:38:10,344 - INFO - root - main.py:72 - Program Terminated
