@@ -49,6 +49,12 @@ def get_missing_columns(df: pd.DataFrame, table_coluns: list[str]) -> list[str]:
     return list(missing_columns)
 
 
+def create_table(cur: psycopg.Cursor, schema: str, table: str, cols: list[str]) -> None:
+    query = """
+
+    """
+
+
 def get_advisors(
     cur: psycopg.Cursor,
     schema: str,
