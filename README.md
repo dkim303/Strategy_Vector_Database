@@ -54,6 +54,18 @@ This project is ...
 │ ├── embedding  
 │ └── embedding_model  
 │  
+├── etl history  
+│ ├── Purpose: Document ETL history for data insertion
+│ └── Columns:  
+│ ├── job_type  
+│ ├── run_status  
+│ ├── num_entries  
+│ ├── urls  
+│ ├── start_time  
+│ ├── end_time  
+│ ├── error_message  
+│ └── log_file  
+│  
 ├── documents  
 │ ├── Purpose: Catalogues source documents
 │ └── Columns:  

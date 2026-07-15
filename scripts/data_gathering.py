@@ -25,7 +25,9 @@ from vector_db_package.database_utils import (
 from vector_db_package.schema_utils import (
     get_advisors,
     create_new_advisor,
-    check_table_exists
+    check_table_exists,
+    get_table_columns,
+    ensure_valid_table
 )
 
 def main(config_file_name: str):
@@ -55,6 +57,21 @@ def main(config_file_name: str):
 
         logging.info("Program Started")
         logging.info("Log file: %s", log_file)
+
+        SQL_tables = [(advisors_table, "advisors_table"), 
+                      (documents_table, "documents_table"), 
+                      (chunks_table, "chunks_table"), 
+                      (advisors_documents_table, "advisors_documents_table"), 
+                      (etl_history_table, "etl_history_table")]
+
+        for table, table_type in SQL_tables:
+            if check_table_exists(cur, postgres_schema, table) is False:
+                logging.info(f"{table} does not exist, creating it in server")
+
+            else:
+                cols = get_table_columns(cur, postgres_schema, table)
+                ensure_valid_table(cur, postgres_schema, table, table_type, cols)
+                
 
         while not is_ended:
             url = input("Enter URL or type 'quit' to terminate program: ").strip()
