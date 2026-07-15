@@ -40,18 +40,88 @@ def get_table_columns(cur: psycopg.Cursor, schema: str, table: str) -> list[str]
     return [row[0] for row in rows]
 
 
-def get_missing_columns(df: pd.DataFrame, table_coluns: list[str]) -> list[str]:
-    df_columns = set(df.columns)
-    table_columns_set = set(table_coluns)
-
-    missing_columns = table_columns_set - df_columns
-
-    return list(missing_columns)
-
-
-def create_table(cur: psycopg.Cursor, schema: str, table: str, cols: list[str]) -> None:
+def add_new_col(cur: psycopg.Cursor, table: str, col: str, type: str) -> None:
     query = """
+        ALTER TABLE %s
+    """
+    cur.execute(query, (table))
 
+
+def ensure_valid_table(cur: psycopg.Cursor, postgres_schema: str, table: str, table_type: str, present_cols: list[str]) -> None:
+    expected_columns = []
+    missing_cols = []
+
+    match table_type:
+        case "advisor":
+            expected_columns = {
+                "advisor_id": "SERIAL PRIMARY KEY",
+                "name": "TEXT NOT NULL",
+                "description": "TEXT",
+                "config": "JSONB",
+            }
+        
+        case "documents":
+            expected_columns = {
+                "document_id": "SERIAL PRIMARY KEY",
+                "url": "TEXT",
+                "source_type": "TEXT",
+                "content_hash": "TEXT UNIQUE",
+            }
+        
+        case "advisor_documents":
+            expected_columns = {
+                "advisor_id": "INTEGER",
+                "document_id": "INTEGER",
+                "weight": "DOUBLE PRECISION DEFAULT 1.0",
+                "relevance_note": "TEXT",
+            }
+
+        case "chunks":
+            expected_columns = {
+                "chunk_id": "SERIAL PRIMARY KEY",
+                "document_id": "INTEGER",
+                "chunk_index": "INTEGER",
+                "chunk_text": "TEXT",
+                "token_count": "INTEGER",
+                "embedding": "DOUBLE PRECISION[]",
+                "embedding_model": "TEXT",
+            }
+        
+        case "etl_history":
+            expected_columns = {
+                "job_type": "TEXT",
+                "run_status": "TEXT",
+                "num_entries": "INTEGER",
+                "urls": "TEXT[]",
+                "start_time": "TIMESTAMP",
+                "end_time": "TIMESTAMP",
+                "error_message": "TEXT",
+                "log_file": "TEXT",
+            }
+
+        case _:
+            logging.error(f"Invalid table_type {table_type} input for missing columns check")
+            raise Exception(f"Invalid table_type {table_type} input for missing columns check")
+        
+    present_cols_set = set(present_cols)
+    missing_cols = [
+        col for col in expected_columns
+        if col not in present_cols_set
+        ]
+
+    if len(missing_cols) == 0:
+        return
+    else:
+        logging.info(f"Creating missing columns for {table}: {missing_cols}")
+        for missing_col in missing_cols:
+            datatype = expected_columns[missing_col]
+            add_new_col(cur, table, missing_col, datatype)
+        
+
+
+def create_table(cur: psycopg.Cursor, schema: str, table: str, table_type: str) -> None:
+    query = """
+        
     """
 
 
