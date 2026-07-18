@@ -41,13 +41,19 @@ def get_table_columns(cur: psycopg.Cursor, schema: str, table: str) -> list[str]
 
 
 def add_new_col(cur: psycopg.Cursor, table: str, col: str, type: str) -> None:
-    query = """
-        ALTER TABLE %s
-    """
-    cur.execute(query, (table))
+    query = sql.SQL("""
+        ALTER TABLE {table}
+        ADD COLUMN {column} {data_type};
+    """).format(
+        table=sql.Identifier(table),
+        column=sql.Identifier(col),
+        data_type=sql.SQL(type),
+    )
+
+    cur.execute(query)
 
 
-def ensure_valid_table(cur: psycopg.Cursor, postgres_schema: str, table: str, table_type: str, present_cols: list[str]) -> None:
+def ensure_valid_table(cur: psycopg.Cursor, con: psycopg.Connection, postgres_schema: str, table: str, table_type: str, present_cols: list[str]) -> None:
     expected_columns = []
     missing_cols = []
 
@@ -116,13 +122,84 @@ def ensure_valid_table(cur: psycopg.Cursor, postgres_schema: str, table: str, ta
         for missing_col in missing_cols:
             datatype = expected_columns[missing_col]
             add_new_col(cur, table, missing_col, datatype)
+
+        con.commit()
         
 
 
-def create_table(cur: psycopg.Cursor, schema: str, table: str, table_type: str) -> None:
-    query = """
+def create_table(cur: psycopg.Cursor, con: psycopg.Connection, schema: str, table_name: str, table_type: str) -> None:
+    match table_type:
+        case "advisor":
+            expected_columns = {
+                "advisor_id": "SERIAL PRIMARY KEY",
+                "name": "TEXT NOT NULL",
+                "description": "TEXT",
+                "config": "JSONB",
+            }
         
-    """
+        case "documents":
+            expected_columns = {
+                "document_id": "SERIAL PRIMARY KEY",
+                "url": "TEXT",
+                "source_type": "TEXT",
+                "content_hash": "TEXT UNIQUE",
+            }
+        
+        case "advisor_documents":
+            expected_columns = {
+                "advisor_id": "INTEGER",
+                "document_id": "INTEGER",
+                "weight": "DOUBLE PRECISION DEFAULT 1.0",
+                "relevance_note": "TEXT",
+            }
+
+        case "chunks":
+            expected_columns = {
+                "chunk_id": "SERIAL PRIMARY KEY",
+                "document_id": "INTEGER",
+                "chunk_index": "INTEGER",
+                "chunk_text": "TEXT",
+                "token_count": "INTEGER",
+                "embedding": "DOUBLE PRECISION[]",
+                "embedding_model": "TEXT",
+            }
+        
+        case "etl_history":
+            expected_columns = {
+                "job_type": "TEXT",
+                "run_status": "TEXT",
+                "num_entries": "INTEGER",
+                "urls": "TEXT[]",
+                "start_time": "TIMESTAMP",
+                "end_time": "TIMESTAMP",
+                "error_message": "TEXT",
+                "log_file": "TEXT",
+            }
+
+        case _:
+            logging.error(f"Invalid table_type {table_type} input for missing columns check")
+            raise Exception(f"Invalid table_type {table_type} input for missing columns check")
+
+    column_definitions = [
+        sql.SQL("{} {}").format(
+            sql.Identifier(column_name),
+            sql.SQL(data_type),
+        )
+        for column_name, data_type in expected_columns.items()
+    ]
+
+    query = sql.SQL("""
+        CREATE TABLE IF NOT EXISTS {}.{} (
+            {}
+        );
+    """).format(
+        sql.Identifier(schema),
+        sql.Identifier(table_name),
+        sql.SQL(",\n").join(column_definitions),
+    )
+
+    cur.execute(query)
+    con.commit()
 
 
 def get_advisors(
