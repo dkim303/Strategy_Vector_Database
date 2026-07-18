@@ -27,7 +27,8 @@ from vector_db_package.schema_utils import (
     create_new_advisor,
     check_table_exists,
     get_table_columns,
-    ensure_valid_table
+    ensure_valid_table,
+    create_table,
 )
 
 def main(config_file_name: str):
@@ -64,15 +65,19 @@ def main(config_file_name: str):
                       (advisors_documents_table, "advisors_documents_table"), 
                       (etl_history_table, "etl_history_table")]
 
+
+        # Check for table existances in DB, create if not existant, add necessary columns if not present
         for table, table_type in SQL_tables:
             if check_table_exists(cur, postgres_schema, table) is False:
                 logging.info(f"{table} does not exist, creating it in server")
+                create_table(cur, conn, postgres_schema, table, table_type)
 
             else:
                 cols = get_table_columns(cur, postgres_schema, table)
-                ensure_valid_table(cur, postgres_schema, table, table_type, cols)
+                cols = [column.lower() for column in cols]
+                ensure_valid_table(cur, conn, postgres_schema, table, table_type, cols)
                 
-
+        # URL input process
         while not is_ended:
             url = input("Enter URL or type 'quit' to terminate program: ").strip()
 
